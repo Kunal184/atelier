@@ -9,6 +9,7 @@ CREATE TABLE users (
 CREATE TABLE rooms (
     id SERIAL PRIMARY KEY,
     room_id VARCHAR(100) NOT NULL UNIQUE,
+    name VARCHAR(255) NOT NULL UNIQUE,
     owner_id INTEGER,
     code_content TEXT DEFAULT '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

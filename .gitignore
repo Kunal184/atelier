@@ -1,4 +1,4 @@
-.agents/
 .env
 node_modules/
 why.txt
+tech_stack_justification.md

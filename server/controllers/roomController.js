@@ -10,7 +10,7 @@ async function createRoom(req, res) {
     const roomName = name && name.trim() ? name.trim() : generateSlug();
     
     const result = await db.query(
-      'INSERT INTO rooms (room_id, name, code_content) VALUES (\, \, \) RETURNING *',
+      'INSERT INTO rooms (room_id, name, code_content) VALUES ($1, $2, $3) RETURNING *',
       [roomId, roomName, '']
     );
     
@@ -32,7 +32,7 @@ async function getRoomByIdentifier(req, res) {
   try {
     const { identifier } = req.params;
     const result = await db.query(
-      'SELECT * FROM rooms WHERE room_id = \ OR name = \',
+      'SELECT * FROM rooms WHERE room_id = $1 OR name = $1',
       [identifier]
     );
     

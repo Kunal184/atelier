@@ -9,7 +9,7 @@ const runners = {
 export function getRunner(language = 'python') {
   const runner = runners[language.toLowerCase()];
   if (!runner) {
-    throw new Error(\No execution runner registered for language: \\);
+    throw new Error('No execution runner registered for language: ' + language);
   }
   return runner;
 }

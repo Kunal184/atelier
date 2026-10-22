@@ -5,13 +5,16 @@ const { generateSlug } = require('../utils/slugGenerator');
 // Controller: Create a new room
 async function createRoom(req, res) {
   try {
-    const { name } = req.body;
+    const { name, language } = req.body;
     const roomId = crypto.randomUUID();
     const roomName = name && name.trim() ? name.trim() : generateSlug();
+    const roomLanguage = language && ['python', 'javascript'].includes(language.toLowerCase()) 
+      ? language.toLowerCase() 
+      : 'python';
     
     const result = await db.query(
-      'INSERT INTO rooms (room_id, name, code_content) VALUES ($1, $2, $3) RETURNING *',
-      [roomId, roomName, '']
+      'INSERT INTO rooms (room_id, name, language, code_content) VALUES ($1, $2, $3, $4) RETURNING *',
+      [roomId, roomName, roomLanguage, '']
     );
     
     res.status(201).json({
@@ -47,7 +50,37 @@ async function getRoomByIdentifier(req, res) {
   }
 }
 
+// Controller: Update room language
+async function updateRoomLanguage(req, res) {
+  try {
+    const { identifier } = req.params;
+    const { language } = req.body;
+
+    if (!language || !['python', 'javascript'].includes(language.toLowerCase())) {
+      return res.status(400).json({ error: 'Invalid or unsupported language.' });
+    }
+
+    const result = await db.query(
+      'UPDATE rooms SET language = $1 WHERE room_id = $2 OR name = $2 RETURNING *',
+      [language.toLowerCase(), identifier]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Room not found.' });
+    }
+
+    res.status(200).json({
+      message: 'Room language updated successfully',
+      room: result.rows[0],
+    });
+  } catch (err) {
+    console.error('Error updating room language:', err);
+    res.status(500).json({ error: 'Failed to update room language.' });
+  }
+}
+
 module.exports = {
   createRoom,
   getRoomByIdentifier,
+  updateRoomLanguage,
 };

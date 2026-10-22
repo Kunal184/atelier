@@ -21,8 +21,8 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionError, setActionError] = useState('');
 
-  // Selected language (defaults to python, easily selectable in future)
-  const [selectedLanguage] = useState('python');
+  // Selected language (synchronized with roomData)
+  const [selectedLanguage, setSelectedLanguage] = useState('python');
   const [runnerReady, setRunnerReady] = useState(false);
 
   // Editor and execution state
@@ -34,9 +34,10 @@ export default function App() {
 
   const editorRef = useRef(null);
 
-  // Pre-initialize runner in background on mount
+  // Pre-initialize runner in background when selected language changes
   useEffect(() => {
     async function initRunner() {
+      setRunnerReady(false);
       try {
         const runner = getRunner(selectedLanguage);
         await runner.init();
@@ -73,6 +74,9 @@ export default function App() {
 
         const data = await response.json();
         setRoomData(data.room);
+        if (data.room.language) {
+          setSelectedLanguage(data.room.language);
+        }
       } catch (err) {
         setRoomError(err.message);
       } finally {
@@ -82,6 +86,22 @@ export default function App() {
 
     fetchRoom();
   }, []);
+
+  // Handle changing language and persist back to PostgreSQL
+  const handleLanguageChange = async (newLanguage) => {
+    setSelectedLanguage(newLanguage);
+    if (!roomData) return;
+
+    try {
+      await fetch(`${BACKEND_URL}/api/rooms/${encodeURIComponent(roomData.room_id)}/language`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: newLanguage }),
+      });
+    } catch (err) {
+      console.error('Failed to persist language change:', err);
+    }
+  };
 
   // Handle Monaco editor mounting and bind Yjs collaborative document
   const handleEditorDidMount = (editor, monaco) => {
@@ -200,6 +220,15 @@ export default function App() {
           <div className="room-info">
             <span className="room-title">Room:</span>
             <span className="room-name">{roomData.name}</span>
+            <select
+              className="input-field"
+              style={{ padding: '0.25rem 0.5rem', fontSize: '0.85rem', width: 'auto' }}
+              value={selectedLanguage}
+              onChange={(e) => handleLanguageChange(e.target.value)}
+            >
+              <option value="python">Python 3.11 (WASM)</option>
+              <option value="javascript">JavaScript (ES6)</option>
+            </select>
             <div className={`status-badge ${connected ? 'connected' : 'connecting'}`}>
               <span className="status-dot"></span>
               {connected ? 'Sync Connected' : 'Connecting...'}
@@ -231,15 +260,19 @@ export default function App() {
         {/* Editor Area */}
         <div className="editor-section">
           <div className="editor-toolbar">
-            <span>Python 3.11 (WASM Pyodide Engine)</span>
+            <span>
+              {selectedLanguage === 'python'
+                ? 'Python 3.11 (Pyodide WASM Engine)'
+                : 'JavaScript (Browser Worker Sandbox)'}
+            </span>
             <span>{roomData ? 'Real-time Yjs Sync Active' : 'No Room Connected'}</span>
           </div>
           <div className="editor-container">
             {roomData ? (
               <Editor
-                key={roomData.room_id}
+                key={`${roomData.room_id}-${selectedLanguage}`}
                 height="100%"
-                defaultLanguage="python"
+                language={selectedLanguage}
                 theme="vs-dark"
                 options={{
                   fontSize: 14,

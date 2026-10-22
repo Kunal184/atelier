@@ -1,8 +1,10 @@
 import { PyodideRunner } from './PyodideRunner';
+import { JavaScriptRunner } from './JavaScriptRunner';
 
 // Cached runner instances
 const runners = {
   python: new PyodideRunner(),
+  javascript: new JavaScriptRunner(),
 };
 
 // Factory function to obtain the appropriate runner strategy

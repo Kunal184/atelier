@@ -4,7 +4,7 @@ import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { MonacoBinding } from 'y-monaco';
 import { Play, Copy, Check, Terminal, Code2, PlusCircle, LogIn } from 'lucide-react';
-import { usePyodide } from './usePyodide';
+import { getRunner } from './runners/runnerFactory';
 import './index.css';
 
 // Base backend API URL
@@ -21,6 +21,10 @@ export default function App() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [actionError, setActionError] = useState('');
 
+  // Selected language (defaults to python, easily selectable in future)
+  const [selectedLanguage] = useState('python');
+  const [runnerReady, setRunnerReady] = useState(false);
+
   // Editor and execution state
   const [connected, setConnected] = useState(false);
   const [output, setOutput] = useState('');
@@ -29,7 +33,20 @@ export default function App() {
   const [copied, setCopied] = useState(false);
 
   const editorRef = useRef(null);
-  const { loading: pyodideLoading, runPythonCode } = usePyodide();
+
+  // Pre-initialize runner in background on mount
+  useEffect(() => {
+    async function initRunner() {
+      try {
+        const runner = getRunner(selectedLanguage);
+        await runner.init();
+        setRunnerReady(true);
+      } catch (err) {
+        console.error('Failed to initialize code runner:', err);
+      }
+    }
+    initRunner();
+  }, [selectedLanguage]);
 
   // Parse room query parameter on mount and whenever search parameters change
   useEffect(() => {
@@ -97,18 +114,25 @@ export default function App() {
     };
   };
 
-  // Execute Python code in the browser via Pyodide
+  // Execute code using the Strategy Pattern runner
   const handleRunCode = async () => {
     if (!editorRef.current) return;
     const code = editorRef.current.getValue();
 
     setIsRunning(true);
     setIsError(false);
-    setOutput('Running Python code in browser WASM engine...');
+    setOutput(`Running ${selectedLanguage} code...`);
 
     try {
-      const result = await runPythonCode(code);
-      setOutput(result);
+      const runner = getRunner(selectedLanguage);
+      const result = await runner.run(code);
+
+      if (result.stderr) {
+        setIsError(true);
+        setOutput(`${result.stdout ? result.stdout + '\n' : ''}${result.stderr}\n\n[Execution time: ${result.executionTimeMs}ms]`);
+      } else {
+        setOutput(`${result.stdout || '(Code executed with no output)'}\n\n[Execution time: ${result.executionTimeMs}ms]`);
+      }
     } catch (err) {
       setIsError(true);
       setOutput(err.message);
@@ -194,10 +218,10 @@ export default function App() {
           <button
             className="btn btn-primary"
             onClick={handleRunCode}
-            disabled={!roomData || isRunning || pyodideLoading}
+            disabled={!roomData || isRunning || !runnerReady}
           >
             <Play size={16} />
-            {pyodideLoading ? 'Loading Pyodide...' : isRunning ? 'Running...' : 'Run Code'}
+            {!runnerReady ? 'Initializing Engine...' : isRunning ? 'Running...' : 'Run Code'}
           </button>
         </div>
       </header>

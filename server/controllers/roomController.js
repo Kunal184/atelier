@@ -12,9 +12,12 @@ async function createRoom(req, res) {
       ? language.toLowerCase() 
       : 'python';
     
+    // Assign owner_id if request is made by an authenticated user, else NULL for guest
+    const ownerId = req.user ? req.user.id : null;
+    
     const result = await db.query(
-      'INSERT INTO rooms (room_id, name, language, code_content) VALUES ($1, $2, $3, $4) RETURNING *',
-      [roomId, roomName, roomLanguage, '']
+      'INSERT INTO rooms (room_id, name, language, owner_id, code_content) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [roomId, roomName, roomLanguage, ownerId, '']
     );
     
     res.status(201).json({
@@ -27,6 +30,21 @@ async function createRoom(req, res) {
     }
     console.error('Error creating room:', err);
     res.status(500).json({ error: 'Failed to create room.' });
+  }
+}
+
+// Controller: Fetch all rooms owned by the logged-in user
+async function getMyRooms(req, res) {
+  try {
+    const result = await db.query(
+      'SELECT id, room_id, name, language, created_at FROM rooms WHERE owner_id = $1 ORDER BY created_at DESC',
+      [req.user.id]
+    );
+
+    res.status(200).json({ rooms: result.rows });
+  } catch (err) {
+    console.error('Error fetching user rooms:', err);
+    res.status(500).json({ error: 'Failed to fetch user rooms.' });
   }
 }
 
@@ -81,6 +99,7 @@ async function updateRoomLanguage(req, res) {
 
 module.exports = {
   createRoom,
+  getMyRooms,
   getRoomByIdentifier,
   updateRoomLanguage,
 };

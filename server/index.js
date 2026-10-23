@@ -7,6 +7,7 @@ require("dotenv").config();
 // Import database and modules
 const db = require("./db");
 const roomRoutes = require("./routes/roomRoutes");
+const authRoutes = require("./routes/authRoutes");
 const { initWebSocketServer } = require("./sockets/websocket");
 
 // Initializing the Express app
@@ -34,6 +35,7 @@ app.get("/health", async (req, res) => {
 });
 
 // API Routes
+app.use("/api/auth", authRoutes);
 app.use("/api/rooms", roomRoutes);
 
 // Port definition

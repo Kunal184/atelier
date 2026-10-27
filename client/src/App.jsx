@@ -3,8 +3,9 @@ import Editor from '@monaco-editor/react';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { MonacoBinding } from 'y-monaco';
-import { Play, Copy, Check, Terminal, Code2, PlusCircle, LogIn, User, LogOut, FolderGit2, X } from 'lucide-react';
+import { Play, Copy, Check, Terminal, Code2, PlusCircle, LogIn, User, LogOut, FolderGit2, X, ChevronLeft } from 'lucide-react';
 import { getRunner } from './runners/runnerFactory';
+import LandingPage from './LandingPage';
 import './index.css';
 
 // Base backend API URL
@@ -214,9 +215,8 @@ export default function App() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Create a new room via the backend API (attaches auth token if logged in)
-  const handleCreateRoom = async (e) => {
-    e.preventDefault();
+  // Create a new room via backend API (supports custom name & language from landing page)
+  const handleCreateRoom = async (customName = '', customLang = selectedLanguage) => {
     setIsSubmitting(true);
     setActionError('');
 
@@ -229,7 +229,10 @@ export default function App() {
       const response = await fetch(`${BACKEND_URL}/api/rooms`, {
         method: 'POST',
         headers,
-        body: JSON.stringify({ name: inputRoomName, language: selectedLanguage }),
+        body: JSON.stringify({ 
+          name: customName && customName.trim() ? customName.trim() : inputRoomName, 
+          language: customLang 
+        }),
       });
 
       const data = await response.json();
@@ -242,6 +245,9 @@ export default function App() {
       const newUrl = `${window.location.pathname}?room=${encodeURIComponent(data.room.name)}`;
       window.history.pushState({}, '', newUrl);
       setRoomData(data.room);
+      if (data.room.language) {
+        setSelectedLanguage(data.room.language);
+      }
     } catch (err) {
       setActionError(err.message);
     } finally {
@@ -250,11 +256,11 @@ export default function App() {
   };
 
   // Join existing room by name or UUID
-  const handleJoinExistingRoom = (e) => {
-    e.preventDefault();
-    if (!inputRoomName.trim()) return;
+  const handleJoinExistingRoom = (identifier) => {
+    const target = identifier || inputRoomName;
+    if (!target.trim()) return;
 
-    const newUrl = `${window.location.pathname}?room=${encodeURIComponent(inputRoomName.trim())}`;
+    const newUrl = `${window.location.pathname}?room=${encodeURIComponent(target.trim())}`;
     window.location.href = newUrl;
   };
 
@@ -321,13 +327,191 @@ export default function App() {
   };
 
 
+  // If not currently inside an active room session, render the OpenRouter-style landing page
+  if (!roomData) {
+    return (
+      <div className="app-container">
+        <LandingPage
+          user={user}
+          onCreateRoom={handleCreateRoom}
+          onJoinRoom={handleJoinExistingRoom}
+          onOpenAuth={() => {
+            setAuthError('');
+            setShowAuthModal(true);
+          }}
+          onOpenMyRooms={handleOpenMyRooms}
+          onLogout={handleLogout}
+          isSubmitting={isSubmitting}
+          actionError={actionError || roomError}
+        />
+
+        {/* User Authentication Modal */}
+        {showAuthModal && (
+          <div className="modal-overlay" onClick={() => setShowAuthModal(false)}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2>{authMode === 'login' ? 'Sign In' : 'Create Account'}</h2>
+                <button
+                  className="btn btn-secondary"
+                  style={{ padding: '0.25rem 0.5rem' }}
+                  onClick={() => setShowAuthModal(false)}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              <div className="tab-group">
+                <button
+                  className={`tab-btn ${authMode === 'login' ? 'active' : ''}`}
+                  onClick={() => {
+                    setAuthMode('login');
+                    setAuthError('');
+                  }}
+                >
+                  Sign In
+                </button>
+                <button
+                  className={`tab-btn ${authMode === 'register' ? 'active' : ''}`}
+                  onClick={() => {
+                    setAuthMode('register');
+                    setAuthError('');
+                  }}
+                >
+                  Register
+                </button>
+              </div>
+
+              {authError && <div className="alert-error">{authError}</div>}
+
+              <form className="form-group" onSubmit={handleAuthSubmit}>
+                {authMode === 'register' && (
+                  <>
+                    <label htmlFor="auth-username">Username</label>
+                    <input
+                      id="auth-username"
+                      className="input-field"
+                      type="text"
+                      required
+                      placeholder="Your developer username"
+                      value={authUsername}
+                      onChange={(e) => setAuthUsername(e.target.value)}
+                      disabled={authLoading}
+                    />
+                  </>
+                )}
+
+                <label htmlFor="auth-email">Email Address</label>
+                <input
+                  id="auth-email"
+                  className="input-field"
+                  type="email"
+                  required
+                  placeholder="you@example.com"
+                  value={authEmail}
+                  onChange={(e) => setAuthEmail(e.target.value)}
+                  disabled={authLoading}
+                />
+
+                <label htmlFor="auth-password">Password</label>
+                <input
+                  id="auth-password"
+                  className="input-field"
+                  type="password"
+                  required
+                  placeholder="Enter password"
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  disabled={authLoading}
+                />
+
+                <button
+                  type="submit"
+                  className="btn-accent-lime"
+                  style={{ marginTop: '0.5rem', justifyContent: 'center', padding: '0.65rem' }}
+                  disabled={authLoading}
+                >
+                  {authLoading
+                    ? 'Please wait...'
+                    : authMode === 'login'
+                    ? 'Sign In'
+                    : 'Create Account'}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* User's Created Rooms Modal */}
+        {showMyRoomsModal && (
+          <div className="modal-overlay" onClick={() => setShowMyRoomsModal(false)}>
+            <div className="modal-card" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '520px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <h2>My Workspaces</h2>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                    Rooms created under your account
+                  </p>
+                </div>
+                <button
+                  className="btn btn-secondary"
+                  style={{ padding: '0.25rem 0.5rem' }}
+                  onClick={() => setShowMyRoomsModal(false)}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {loadingMyRooms ? (
+                <div style={{ color: 'var(--text-muted)', padding: '1rem 0' }}>Loading rooms...</div>
+              ) : myRooms.length === 0 ? (
+                <div style={{ color: 'var(--text-muted)', padding: '1rem 0' }}>
+                  You have not created any rooms yet. Any new room you create while logged in will appear here.
+                </div>
+              ) : (
+                <div className="room-list">
+                  {myRooms.map((room) => (
+                    <div
+                      key={room.id}
+                      className="room-card-item"
+                      onClick={() => {
+                        setShowMyRoomsModal(false);
+                        window.location.href = `/?room=${encodeURIComponent(room.name)}`;
+                      }}
+                    >
+                      <div>
+                        <div className="room-item-title">{room.name}</div>
+                        <div className="room-item-meta">
+                          <span>Language: {room.language}</span>
+                          <span>•</span>
+                          <span>{new Date(room.created_at).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '0.8rem', color: 'var(--accent)' }}>Open →</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Otherwise, render the active Collaborative Workspace (IDE)
   return (
     <div className="app-container">
       {/* Header Bar */}
       <header className="navbar">
-        <div className="brand">
-          <Code2 size={24} color="#818cf8" />
-          <span>Atelier</span>
+        <div 
+          className="brand" 
+          onClick={() => { window.location.href = '/'; }}
+          style={{ cursor: 'pointer' }}
+          title="Return to Home"
+        >
+          <ChevronLeft size={18} color="var(--text-muted)" />
+          <span className="brand-dot small"></span>
+          <span style={{ fontSize: '1.1rem', color: '#fff', fontWeight: 800 }}>atelier</span>
         </div>
 
         {roomData && (
@@ -458,56 +642,7 @@ export default function App() {
         </div>
       </div>
 
-      {/* Room Selection or Creation Modal when no valid room is active */}
-      {(!roomData || roomError) && !loadingRoom && (
-        <div className="modal-overlay">
-          <div className="modal-card">
-            <div className="modal-header">
-              <h2>Welcome to CodeSpace</h2>
-              <p>Create a collaborative coding room or join an existing session.</p>
-            </div>
 
-            {roomError && <div className="alert-error">{roomError}</div>}
-            {actionError && <div className="alert-error">{actionError}</div>}
-
-            <form className="form-group" onSubmit={handleCreateRoom}>
-              <label htmlFor="room-name-input">Room Name (Leave blank for random title)</label>
-              <input
-                id="room-name-input"
-                className="input-field"
-                type="text"
-                placeholder="e.g. data-science-lab"
-                value={inputRoomName}
-                onChange={(e) => setInputRoomName(e.target.value)}
-                disabled={isSubmitting}
-              />
-
-              <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-                <button
-                  type="submit"
-                  className="btn btn-primary"
-                  style={{ flex: 1, justifyContent: 'center' }}
-                  disabled={isSubmitting}
-                >
-                  <PlusCircle size={16} />
-                  {isSubmitting ? 'Creating...' : 'Create Room'}
-                </button>
-
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  style={{ flex: 1, justifyContent: 'center' }}
-                  onClick={handleJoinExistingRoom}
-                  disabled={isSubmitting || !inputRoomName.trim()}
-                >
-                  <LogIn size={16} />
-                  Join Room
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {/* User Authentication Modal (Sign In / Register) */}
       {showAuthModal && (

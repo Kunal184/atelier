@@ -44,9 +44,8 @@ export default function LandingPage({
       {/* Top OpenRouter-style Navigation Bar */}
       <header className="landing-nav">
         <div className="landing-nav-left">
-          <div className="landing-brand">
-            <span className="brand-dot"></span>
-            <span className="brand-text">atelier</span>
+          <div className="navbar-vertical-brand" aria-label="atelier">
+            <span className="vertical-brand-text">ATELIER</span>
           </div>
         </div>
 

@@ -420,6 +420,25 @@ body {
   gap: 1.75rem;
 }
 
+.navbar-vertical-brand {
+  display: flex;
+  align-items: center;
+  user-select: none;
+  cursor: pointer;
+}
+
+.navbar-vertical-brand .vertical-brand-text {
+  writing-mode: horizontal-tb;
+  transform: none;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: var(--accent);
+  text-transform: uppercase;
+  line-height: 1;
+}
+
 .landing-brand {
   display: flex;
   align-items: center;
@@ -646,6 +665,36 @@ body {
   font-weight: 800;
   padding: 0.15rem 0.45rem;
   border-radius: 9999px;
+}
+
+.hero-headline-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vertical-brand-indicator {
+  position: absolute;
+  left: -5.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
+}
+
+.vertical-brand-text {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: 0.28em;
+  color: var(--accent);
+  text-transform: uppercase;
+  line-height: 1;
 }
 
 .hero-headline {

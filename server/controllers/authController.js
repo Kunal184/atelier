@@ -20,7 +20,7 @@ async function register(req, res) {
     const passwordHash = await bcrypt.hash(password, 10);
 
     const result = await db.query(
-      'INSERT INTO users (username, email, password_hash) VALUES (\, \, \) RETURNING id, username, email, created_at',
+      'INSERT INTO users (username, email, password_hash) VALUES ($1, $2, $3) RETURNING id, username, email, created_at',
       [username.trim().toLowerCase(), email.trim().toLowerCase(), passwordHash]
     );
 
@@ -44,17 +44,16 @@ async function register(req, res) {
 // Controller: Log in an existing user
 async function login(req, res) {
   try {
-    const { identifier, password } = req.body;
+    const { identifier, email, password } = req.body;
+    const loginIdentifier = (identifier || email || '').trim().toLowerCase();
 
-    if (!identifier || !password) {
+    if (!loginIdentifier || !password) {
       return res.status(400).json({ error: 'Username/email and password are required.' });
     }
 
-    const cleanIdentifier = identifier.trim().toLowerCase();
-
     const result = await db.query(
-      'SELECT id, username, email, password_hash, created_at FROM users WHERE email = \ OR username = \',
-      [cleanIdentifier]
+      'SELECT id, username, email, password_hash, created_at FROM users WHERE email = $1 OR username = $1',
+      [loginIdentifier]
     );
 
     if (result.rows.length === 0) {
@@ -87,7 +86,7 @@ async function login(req, res) {
 async function getMe(req, res) {
   try {
     const result = await db.query(
-      'SELECT id, username, email, created_at FROM users WHERE id = \',
+      'SELECT id, username, email, created_at FROM users WHERE id = $1',
       [req.user.id]
     );
 

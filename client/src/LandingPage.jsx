@@ -6,7 +6,6 @@ import {
   Cpu, 
   Users, 
   ArrowRight, 
-  Search, 
   Sparkles, 
   ShieldCheck, 
   Layers, 
@@ -49,17 +48,6 @@ export default function LandingPage({
             <span className="brand-dot"></span>
             <span className="brand-text">atelier</span>
           </div>
-
-          <form onSubmit={handleJoinSubmit} className="nav-search-bar">
-            <Search size={15} className="search-icon" />
-            <input
-              type="text"
-              placeholder="Search or enter room slug..."
-              value={quickRoomName}
-              onChange={(e) => setQuickRoomName(e.target.value)}
-            />
-            <span className="search-badge">⌘ K</span>
-          </form>
         </div>
 
         <nav className="landing-nav-links">
